@@ -64,25 +64,25 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
       String username = _usernameController.text.trim();
       String password = _passwordController.text.trim();
-      bool success = await registerUser(username, password);
-      if (success) {
+      Map<String, String> response = await registerUser(username, password);
+      if (response['message'] != null && response['message']!.isNotEmpty) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => LoginPage()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Registration failed"),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(response['error'] ?? ''),
           duration: Duration(seconds: 2),
         ));
         return;
       }
     } catch (e) {
-      print('Error logging in: $e');
+      print('Error registering: $e');
     }
   }
 
-  Future<bool> registerUser(String username, String password) async {
+  Future<Map<String, String>> registerUser(String username, String password) async {
     var url = '${dotenv.env['BACKEND_API_URL']!}/register';
 
     final Map<String, String> postData = {
@@ -99,16 +99,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
           },
         );
         
-      if (response.statusCode == 201) {
-        print('Response: ${response.body}');
-        return true;
-      } else {
-        print('Error: ${response.reasonPhrase}');
-        return false;
+      dynamic decodedBody = jsonDecode(response.body);
+      Map<String, String> resultMap = {};
+      if (decodedBody is Map) {
+        decodedBody.forEach((key, value) {
+          resultMap[key.toString()] = value.toString();
+        });
       }
+      return resultMap;
     } catch (error) {
       print('Exception: $error');
-      return false;
+      return {'error': 'Registration failed'};
     }
   }
 }

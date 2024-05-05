@@ -66,15 +66,15 @@ class _LoginPageState extends State<LoginPage> {
 
       String username = _usernameController.text.trim();
       String password = _passwordController.text.trim();
-      String token = await loginUser(username, password);
-      if (token.isNotEmpty) {
+      Map<String, String> response = await loginUser(username, password);
+      if (response['token'] != null && response['token']!.isNotEmpty) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => QuickTask(token: token, username: username,)),
+          MaterialPageRoute(builder: (context) => QuickTask(token: response['token'] ?? '', username: username,)),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Login failed"),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(response['error'] ?? ''),
           duration: Duration(seconds: 2),
         ));
         return;
@@ -84,7 +84,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<String> loginUser(String username, String password) async {
+  Future<Map<String, String>> loginUser(String username, String password) async {
     var url = '${dotenv.env['BACKEND_API_URL']!}/login';
 
     final Map<String, String> postData = {
@@ -101,17 +101,17 @@ class _LoginPageState extends State<LoginPage> {
           },
         );
         
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        final String token = responseBody['token'];
-        return token;
-      } else {
-        print('Error: ${response.reasonPhrase}');
-        return "";
+      dynamic decodedBody = jsonDecode(response.body);
+      Map<String, String> resultMap = {};
+      if (decodedBody is Map) {
+        decodedBody.forEach((key, value) {
+          resultMap[key.toString()] = value.toString();
+        });
       }
+      return resultMap;
     } catch (error) {
       print('Exception: $error');
-      return "";
+      return {'error': 'Login failed'};
     }
   }
 }
